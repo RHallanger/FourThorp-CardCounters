@@ -1,7 +1,6 @@
-﻿# BlackjackCounter.py
-# -------------------
-# Simulates a Blackjack table with Hi-Lo card counting
-# and calculates simplified win odds for each player.
+﻿# BlackjackCounter.py - Now deals with completely randomized variables for simulating a blackjack table with card counting.
+# All calculations are done using the Hi-Lo card counting system.
+import random
 
 class CardCounter:
     """Tracks running and true count for a multi-deck shoe."""
@@ -28,7 +27,7 @@ class CardCounter:
     def decks_remaining(self):
         """Estimate remaining decks in the shoe."""
         remaining = (self.total_cards - self.cards_seen) / 52.0
-        return max(remaining, 0.01)  # prevent division by zero
+        return max(remaining, 0.01)
 
     def true_count(self):
         """Return the running count normalized by decks remaining."""
@@ -39,9 +38,8 @@ def calculate_win_odds(player_value, dealer_upcard, true_count):
     """
     Simplified win odds calculation based on player's hand value,
     dealer's upcard, and true count.
-    Returns a float percentage (0-100).
+    Returns a float percentage (0–100).
     """
-    # Base odds simplified for demonstration
     base_odds = {
         11: 58,
         12: 35,
@@ -58,45 +56,57 @@ def calculate_win_odds(player_value, dealer_upcard, true_count):
 
     odds = base_odds.get(player_value, 50)
 
-    # Adjust for dealer upcard (very simplified)
-    if dealer_upcard in ['7','8','9','10','J','Q','K','A']:
+    # Adjust for dealer upcard (simplified)
+    if dealer_upcard in ['7', '8', '9', '10', 'J', 'Q', 'K', 'A']:
         odds -= 5
 
-    # Adjust based on true count (rough approximation)
-    odds += true_count * 2  # every positive count slightly improves player odds
-    odds = max(min(odds, 100), 0)  # clamp between 0 and 100
+    # Adjust based on true count (favorable decks help the player)
+    odds += true_count * 2
+    odds = max(min(odds, 100), 0)
     return round(odds, 2)
 
 
-def simulate_table(player_values, dealer_upcard, counter):
-    """
-    Simulates a table for multiple players.
-    player_values: list of integers representing each player's hand value
-    dealer_upcard: string representing dealer's visible card
-    counter: CardCounter instance
-    Returns list of win odds for each player.
-    """
+def simulate_table(num_players, counter):
+    """Simulates a table for multiple players with random hands."""
+    player_hands = [random.randint(12, 21) for _ in range(num_players)]
+    dealer_upcard = random.choice(['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'])
     true_count = counter.true_count()
-    return [calculate_win_odds(p, dealer_upcard, true_count) for p in player_values]
+
+    results = []
+    for p in player_hands:
+        odds = calculate_win_odds(p, dealer_upcard, true_count)
+        results.append((p, odds))
+    return dealer_upcard, results
 
 
-# --- Example Usage ---
 if __name__ == "__main__":
-    print("Blackjack Counter with Hi-Lo Card Counting")
+    print("♠ Blackjack Counter Simulator ♣")
+    print("Using Hi-Lo Card Counting with Randomized Hands\n")
+
+    # Initialize counter and shoe
     counter = CardCounter(decks=6)
+    cards = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] * (counter.decks * 4)
+    random.shuffle(cards)
 
-    # Example cards already seen
-    dealt_cards = ['2', '5', 'K', '6', '10', '3']
-    for card in dealt_cards:
+    # Deal random number of cards to simulate mid-shoe
+    seen_cards = random.randint(20, 200)
+    for _ in range(seen_cards):
+        card = random.choice(cards)
         counter.count_card(card)
+        cards.remove(card)
 
-    # Example table with multiple players
-    player_hands = [16, 18, 20]  # hand values for 3 players
-    dealer_card = '10'
+    # Random number of players (1–7 typical)
+    num_players = random.randint(1, 7)
 
-    odds = simulate_table(player_hands, dealer_card, counter)
+    dealer_upcard, results = simulate_table(num_players, counter)
 
+    print(f"Cards seen so far: {seen_cards}")
     print(f"Running count: {counter.running_count}")
     print(f"True count: {counter.true_count()}")
-    for i, o in enumerate(odds, start=1):
-        print(f"Player {i} ({player_hands[i-1]}) → Win Odds: {o}%")
+    print(f"Dealer's upcard: {dealer_upcard}")
+    print(f"Players at table: {num_players}\n")
+
+    for i, (value, odds) in enumerate(results, start=1):
+        print(f"Player {i} → Hand: {value}, Win Odds: {odds}%")
+
+    print("\n(Counts and odds change each run — simulates a live shoe.)")
