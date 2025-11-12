@@ -81,7 +81,7 @@ while True:
     ### The num variable can be simplified by using a dictionary mapping or switch-case structure. (It functions fine as is)
     ### ie: card_map = {1: 'A', 11: 'J', 12: 'Q', 13: 'K'}
 
-    ### The user's input is strictly numeric and doesn't handle partial spelling or full spelling of face cards.
+    ### The user's input is strictly numeric and doesn't handle partial spelling or full spelling of face cards at all. The value error exception does not handle any input and allows for too broad of application.
     ### This can be improved by leaving the variable as a string and checking if a defining character is present, still use .upper()/.lower() to standardize input.
 
     # Map numeric input to standard card strings

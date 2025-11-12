@@ -110,3 +110,6 @@ if __name__ == "__main__":
         print(f"Player {i} → Hand: {value}, Win Odds: {odds}%")
 
     print("\n(Counts and odds change each run — simulates a live shoe.)")
+
+### There is no user interactability in this and runs the simulation automatically one time.
+### The cards provided should be randomized, the player count and shoe count should be user defined.
