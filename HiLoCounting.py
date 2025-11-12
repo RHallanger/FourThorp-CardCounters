@@ -70,9 +70,19 @@ print("\nStart entering cards as they are dealt (e.g., 2, 5, K, A, 10). Type 'qu
 while True:
     card = input("Card dealt: ").strip().upper()
 
+    ### The string above suggests using 'quit' to stop, but the code below checks for 'QUIT'.
+    ### you can use card.upper() or card.lower == 'quit' to standardize the input.
+    ### The exit condition kind of results in an exit, but it uses the end of file implicit exit rather than an explicit exit.
+
     if card == 'QUIT':
         print("\nExiting simulator.")
         break
+
+    ### The num variable can be simplified by using a dictionary mapping or switch-case structure. (It functions fine as is)
+    ### ie: card_map = {1: 'A', 11: 'J', 12: 'Q', 13: 'K'}
+
+    ### The user's input is strictly numeric and doesn't handle partial spelling or full spelling of face cards.
+    ### This can be improved by leaving the variable as a string and checking if a defining character is present, still use .upper()/.lower() to standardize input.
 
     # Map numeric input to standard card strings
     try:
@@ -102,3 +112,7 @@ while True:
     counter.count_card(card)
     print(f"Running count: {counter.running_count}, True count: {counter.true_count()}")
     print(f"Decks remaining (approx): {round(counter.decks_remaining(), 2)}\n")
+
+### Overall, well done! The code shows the core logic of Hi-Lo counting clearly and interactively.
+### If you want/are able to, consider incorporating additional features for Illustrious 18 and Fab 4 Surrenders.
+### I used Wizard of Odds as a reference for the card counting rules and strategies.
