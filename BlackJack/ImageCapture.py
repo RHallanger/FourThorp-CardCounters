@@ -25,35 +25,36 @@ import time
 import os
 from PIL import ImageGrab
 
-running = False
+running = True
 
 # Checks which OS the program is running on and creates appropriate directory for program screenshots to be stored
 osname = os.name
-print(osname)
 
 if osname.lower() == 'nt':
     newpath = r'C:\CardCounter'
-    os.makedirs(newpath)
+    if newpath:
+        pass
+    else:
+        os.makedirs(newpath)
 
 elif osname.lower() == 'posix':
     newpath = r'./CardCounter'
-    os.makedirs(newpath)
+    if newpath:
+        pass
+    else:
+        os.makedirs(newpath)
 
 elif osname.lower() == 'macos':
-    newpath = r'/CardCounter'
-    os.makedirs(newpath)
+    newpath = r'.\CardCounter'
+    if newpath:
+        pass
+    else:
+        os.makedirs(newpath)
 
 # Screenshot function
 while running == True:
 
     print("Press Ctrl + C to stop screenshots")
-
-    # Hitting Ctrl+C settings running to False
-    if KeyboardInterrupt:
-        running = False
-        pass
-    else:
-        continue
 
     # Capture the blackjack screen for analysis
     screenshot = ImageGrab.grab(bbox=(5, 157, 2062, 1387))
@@ -63,5 +64,6 @@ while running == True:
 
     # Close the screenshot
     screenshot.close()
+    print("Screenshot taken")
 
     time.sleep(5)
