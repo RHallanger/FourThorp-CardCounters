@@ -3,161 +3,122 @@ import numpy as np
 import pyautogui
 import os
 import time
-from HiLoCounter import HiLoCounter # Imports the Brain
-import StrategyGuide 
+from HiLoCounter import HiLoCounter 
+# import StrategyGuide # (Still commented out)
 
-# --- CONFIGURATION ---
-MIN_MATCH_COUNT = 40 # Required "clues" for detection (Fixes background noise)
+# --- CONFIGURATION (Reverted to Pixel Matching) ---
+# This threshold is the required score (0.0 to 1.0) for a pixel match.
+# It's the most crucial setting for this version! 0.85 is a good start.
+PIXEL_THRESHOLD = 0.85 
 
 # --- ZONES (Your final measured coordinates) ---
 PLAYER_ZONE = (372, 393, 354, 320)
 DEALER_ZONE = (855, 376, 245, 296)
 
-# --- SETUP ---
+# --- SETUP: Initializing the Matcher ---
 brain = HiLoCounter(decks=6)
 TEMPLATE_FOLDER = "templates"
 
-# Initialize the "Detective" (ORB) and Matcher
-orb = cv2.ORB_create(nfeatures=1000)
-bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+# List of card ranks and colors to load (26 total templates)
+card_ranks_and_colors = [
+    ('A', 'RED'), ('A', 'BLACK'), ('2', 'RED'), ('2', 'BLACK'),
+    ('3', 'RED'), ('3', 'BLACK'), ('4', 'RED'), ('4', 'BLACK'),
+    ('5', 'RED'), ('5', 'BLACK'), ('6', 'RED'), ('6', 'BLACK'),
+    ('7', 'RED'), ('7', 'BLACK'), ('8', 'RED'), ('8', 'BLACK'),
+    ('9', 'RED'), ('9', 'BLACK'), ('10', 'RED'), ('10', 'BLACK'),
+    ('J', 'RED'), ('J', 'BLACK'), ('Q', 'RED'), ('Q', 'BLACK'),
+    ('K', 'RED'), ('K', 'BLACK'),
+]
 
-# List of card ranks to load (13 total)
-card_ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-known_cards = []
+known_templates = [] 
 
-print("------------------------------------------------")
-print("PRE-ANALYZING TEMPLATES (Finding Clues)...")
-for rank in card_ranks:
-    # 1. LOAD THE STANDARD TEMPLATE (e.g., template_5.png)
-    filename = f"template_{rank}.png" 
+print("PRE-ANALYZING TEMPLATES...")
+for rank, color in card_ranks_and_colors:
+    # We look for the required 26 files (e.g., template_A_RED.png)
+    filename = f"template_{rank}_{color}.png" 
     path = os.path.join(TEMPLATE_FOLDER, filename)
     
-    img = cv2.imread(path, 0) 
+    img = cv2.imread(path, 0) # <-- IMPORTANT: Loads in grayscale (0) for shape/intensity comparison
     
     if img is None:
         print(f"[ERROR] Missing template: {filename}")
     else:
-        # Find the clues (Keypoints and Descriptors) ONCE at startup.
-        kp, des = orb.detectAndCompute(img, None)
-        
-        if des is not None:
-            # Store standard template data
-            known_cards.append({
-                "name": rank,
-                "kp": kp,
-                "des": des,
-                "shape": img.shape 
-            })
-            print(f"Learned {rank}")
+        # Store the necessary data
+        h, w = img.shape
+        known_templates.append({
+            "name": rank,
+            "img": img,
+            "w": w, "h": h
+        })
 
-    # 2. LOAD THE HIDDEN TEMPLATE (Only for '5' and 'J') # <--- OCCLUSION FIX
-    if rank == '5' or rank == 'J':
-        hidden_file = f"template_{rank}_hidden.png"
-        hidden_path = os.path.join(TEMPLATE_FOLDER, hidden_file)
-        hidden_img = cv2.imread(hidden_path, 0)
-        
-        if hidden_img is not None:
-             kp_h, des_h = orb.detectAndCompute(hidden_img, None)
-             if des_h is not None:
-                # Store the hidden template data with the same card name ('5' or 'J')
-                known_cards.append({
-                    "name": rank, 
-                    "kp": kp_h, 
-                    "des": des_h, 
-                    "shape": hidden_img.shape
-                })
-                print(f"Learned {rank} (Hidden)")
-        # Note: If the hidden file is missing, a warning isn't printed here 
-        # to avoid confusing the user with too many warnings.
+print(f"Bot Ready. Scanning for {len(known_templates)} templates.")
+cards_counted_this_hand = [] 
 
-print(f"------------------------------------------------")
-print(f"Bot Ready. Scanning for {len(known_cards)} total templates.")
-cards_counted_this_hand = []
-
-# --- HELPER FUNCTION: The Detective (ORB Logic) ---
-def find_raw_detections(screenshot_bgr, known_cards_data):
+# --- HELPER FUNCTION: Template Matching Logic ---
+def find_raw_detections_tm(screenshot_bgr, known_templates_list):
     """
-    Scans the screenshot for ALL known cards and returns a list of raw detections.
+    Scans the screenshot using cv2.matchTemplate and returns a list of raw detections.
     """
     raw_detections = []
     
+    # Converts the screenshot to grayscale (required for template matching comparison)
     gray_screen = cv2.cvtColor(screenshot_bgr, cv2.COLOR_BGR2GRAY)
-    kp_screen, des_screen = orb.detectAndCompute(gray_screen, None)
     
-    if des_screen is None:
-        return []
-
-    for card in known_cards_data:
+    for template_data in known_templates_list:
+        w, h = template_data['w'], template_data['h']
         
-        matches = bf.match(card["des"], des_screen)
-        matches = sorted(matches, key=lambda x: x.distance)
-        good_matches = [m for m in matches if m.distance < 50]
+        # 1. Run the template match (The Stencil)
+        res = cv2.matchTemplate(gray_screen, template_data['img'], cv2.TM_CCOEFF_NORMED)
         
-        if len(good_matches) > MIN_MATCH_COUNT:
-            try:
-                src_pts = np.float32([ card["kp"][m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
-                dst_pts = np.float32([ kp_screen[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
-                
-                M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-                
-                if M is not None:
-                    h, w = card["shape"]
-                    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-                    dst = cv2.perspectiveTransform(pts, M)
-                    
-                    x, y, w, h = cv2.boundingRect(dst)
-                    
-                    raw_detections.append({
-                        "box": [x, y, w, h],
-                        "name": card["name"],
-                        "source": screenshot_bgr
-                    })
-            except Exception:
-                pass 
-
+        # 2. Find all locations that pass the required score
+        loc = np.where(res >= PIXEL_THRESHOLD) 
+        
+        for pt in zip(*loc[::-1]):
+            # Store the match for grouping/counting
+            raw_detections.append({
+                "box": [pt[0], pt[1], w, h],
+                "name": template_data['name'],
+            })
+            
     return raw_detections
 
 # --- HELPER FUNCTION: Calculate Hand Total (Unchanged) ---
 def calculate_hand_total(cards):
-    """Calculates the Blackjack value of a list of cards."""
+    """Calculates the Blackjack value of a list of cards, handling Aces (1 or 11)."""
     total = 0
     ace_count = 0
-    
     card_values = {
         '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
         '10': 10, 'J': 10, 'Q': 10, 'K': 10, 'A': 11
     }
-    
     for card in cards:
         total += card_values[card]
-        if card == 'A':
-            ace_count += 1
-            
+        if card == 'A': ace_count += 1
     while total > 21 and ace_count > 0:
         total -= 10
         ace_count -= 1
-        
     return total
 
 
-# --- MAIN LOOP ---
+# --- MAIN LOOP (Template Matching Engine) ---
 while True:
-    # 1. Capture Zones
+    # 1. CAPTURE SCREEN ZONES
     dealer_img_raw = np.array(pyautogui.screenshot(region=DEALER_ZONE))
     player_img_raw = np.array(pyautogui.screenshot(region=PLAYER_ZONE))
     
     dealer_img = cv2.cvtColor(dealer_img_raw, cv2.COLOR_RGB2BGR)
     player_img = cv2.cvtColor(player_img_raw, cv2.COLOR_RGB2BGR)
 
-    # 2. Find Cards (Using the ORB Detective)
-    raw_dealer_detections = find_raw_detections(dealer_img, known_cards)
-    raw_player_detections = find_raw_detections(player_img, known_cards)
+    # 2. FIND RAW DETECTIONS (Using Template Matching)
+    raw_dealer_detections = find_raw_detections_tm(dealer_img, known_templates)
+    raw_player_detections = find_raw_detections_tm(player_img, known_templates)
     
     all_raw_detections = raw_dealer_detections + raw_player_detections
     
     # 3. GROUP OVERLAPPING BOXES (NMS - The Jitter Fix)
     all_boxes = [d['box'] for d in all_raw_detections]
     
+    # Group the boxes and then filter out duplicates/small groups
     grouped_boxes, weights = cv2.groupRectangles(all_boxes * 2, 2, 0.2) 
     
     final_cards = []
@@ -165,15 +126,13 @@ while True:
     # 4. DRAW FINAL BOXES AND GET UNIQUE NAMES
     for (x, y, w, h) in grouped_boxes:
         
-        # Find the original detection that best matches this new, merged box
+        # Find the original detection that best matches this new, merged box (for naming)
         center_x = x + w // 2
         best_name = "UNKNOWN"
         best_distance = float('inf')
         
         for d in all_raw_detections:
-            dx, dy, dw, dh = d['box']
-            d_center_x = dx + dw // 2
-            
+            d_center_x = d['box'][0] + d['box'][2] // 2
             distance = abs(center_x - d_center_x) 
             
             if distance < best_distance:
@@ -202,7 +161,7 @@ while True:
 
     player_total = calculate_hand_total(player_hand)
     dealer_up_card_total = calculate_hand_total(dealer_hand)
-    action = "BUILDING..." 
+    action = "TODO" 
     
     # 7. DRAW THE HUD
     hud = np.zeros((200, 400, 3), dtype="uint8")
