@@ -12,6 +12,8 @@ Usage:
     Ensure all dependencies are installed before execution.
     (Most should be installed by default)
     -pyautogui
+    -PIL
+    -functools
     -pynput
     -tkinter
     -os
@@ -27,18 +29,17 @@ This is a known issue that has not been resolved.
 ===========================================================
 """
 
-import pyautogui
+#import pyautogui
 from pynput import mouse
-from threading import Thread
-from time import sleep
+# from threading import Thread
+# from time import sleep
+from PIL import ImageGrab
+from functools import partial
 import tkinter as tk
 import os
 from pathlib import Path
 
 root = tk.Tk()
-root.title("FourThorpe-Screenshot")
-content = tk.Frame(root)
-frame = tk.Frame(content, borderwidth=5, relief="ridge", width=200, height=100)
 home = Path.home()
 (home/"fourthorpe_cache").mkdir(exist_ok=True,parents=True)
 
@@ -67,7 +68,7 @@ def playerOnClick(x, y, button, pressed):
         playerCoords["px2"], playerCoords["py2"] = x, y
         # Print or process the positions
         print(f'Pressed at ({playerCoords["px1"]}, {playerCoords["py1"]}) and released at ({playerCoords["px2"]}, {playerCoords["py2"]})')
-        return False
+        return False # These return Falses quit the listening thread
 
 def dealerHand():
     print("Please click and drag from the top-left of the area of the dealer's cards to the bottom-right")
@@ -83,7 +84,6 @@ def dealerOnClick(x, y, button, pressed):
     else:
         # Store the position when the mouse is released
         dealerCoords["dx2"], dealerCoords["dy2"] = x, y
-        # Print or process the positions
         print(f'Pressed at ({dealerCoords["dx1"]}, {dealerCoords["dy1"]}) and released at ({dealerCoords["dx2"]}, {dealerCoords["dy2"]})')
         return False
 
@@ -95,6 +95,8 @@ def handSS():
     totalValue = 0
     for index, (coordinate, value) in enumerate(playerCoords.items()):
         totalValue += value
+        
+        #if coordinate == ""
 
         if totalValue != 0:
             break
@@ -117,12 +119,12 @@ def handSS():
     if (home/"fourthorpe_cache/playerHand.png").exists() or (home/"fourthorpe_cache/deakerHand.png").exists():
         os.unlink(home/"fourthorpe_cache/playerHand.png")
         os.unlink(home/"fourthorpe_cache/dealerHand.png")
-
     # Screenshot new pics
     try:
-        # Format is weird, it is pyautogui.screenshot(file, region=(x, y, width, height)) orrrr region=(x, y, x2-x, y2-y)
-        pyautogui.screenshot(home/"fourthorpe_cache/playerHand.png", region=(playerCoords['px1'], playerCoords['py1'], playerCoords['px2'] - playerCoords['px1'], playerCoords['py2'] - playerCoords['py1']))
-        pyautogui.screenshot(home/"fourthorpe_cache/dealerHand.png", region=(dealerCoords['dx1'], dealerCoords['dy1'], dealerCoords['dx2'] - dealerCoords['dx1'], dealerCoords['dy2'] - dealerCoords['dy1'],))
+        playerHandPNG = ImageGrab.grab(bbox=(playerCoords['px1'],playerCoords['py1'],playerCoords['px2'],playerCoords['py2']), all_screens=True)
+        dealerHandPNG = ImageGrab.grab(bbox=(dealerCoords['dx1'],dealerCoords['dy1'],dealerCoords['dx2'],dealerCoords['dy2']), all_screens=True)
+        playerHandPNG.save(home/'fourthorpe_cache/playerHand.png')
+        dealerHandPNG.save(home/'fourthorpe_cache/dealerHand.png')
     except:
         print('ERROR: The capture was either drawn from the wrong direction or user is not using their primary monitor.\n\nPlease re-draw the hands.')
         return
@@ -143,6 +145,9 @@ def quitApp():
     root.destroy()
 
 ### DRAW GUI
+root.title("FourThorpe-Screenshot")
+content = tk.Frame(root)
+frame = tk.Frame(content, borderwidth=5, relief="ridge", width=384, height=100)
 button1=tk.Button(root,text="Player Hand Assignment", command=playerHand)
 button2=tk.Button(root,text="Dealer Hand Assignment", command=dealerHand)
 button3=tk.Button(root,text="Quit", command=quitApp)
