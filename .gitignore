@@ -1,9 +1,23 @@
-﻿/.vs/FourThorp-CardCounters/CopilotIndices/17.14.1368.60722
-/.vs/FourThorp-CardCounters/FileContentIndex
-/.vs/FourThorp-CardCounters/v17/.wsuo
-/.vs
-/__pycache__
-/BlackJack/__pycache__
-/phototaker.py
-/raw_python_view.png
-/raw_python_view.png~
+﻿# --- Python Junk ---
+__pycache__/
+*.pyc
+
+# --- Large Data (Don't push images!) ---
+playing-cards-v5/
+247-Blackjack-Custom-*/
+templates/
+runs/
+*_images/
+
+# --- Large Models (GitHub has a 100MB limit) ---
+*.pt
+!blackjack_brain.pt  # (Optional: Keep this ONLY if it's <100MB)
+
+# --- IDE Settings ---
+.vscode/
+.vs/
+.idea/
+
+# --- Temporary Files ---
+raw_python_view.png
+*.zip
