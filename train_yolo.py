@@ -2,41 +2,48 @@
 from roboflow import Roboflow
 import os
 
-# 🛑 THIS LINE IS REQUIRED ON WINDOWS 🛑
+# 🛑 WINDOWS SAFETY GUARD: Everything must be indented under this line!
 if __name__ == '__main__':
-    
-    # --- 1. DOWNLOAD DATASET ---
-    # (Paste your Roboflow snippet here if you haven't downloaded v2 yet)
-    # rf = Roboflow(api_key="...")
-    # ...
-    
-    # Since you already have the folder "247-Blackjack-Custom-2", we can point to it directly:
-    dataset_folder = "247-Blackjack-Custom-2"
 
+    # --- 1. DOWNLOAD THE DATASET ---
+    # We moved this INSIDE the block so workers don't run it.
+    
+    # ⚠️ PASTE YOUR PRIVATE KEY HERE ⚠️
+    api_key = "YzizvGDTGn3ycUp3BuOR" 
+    
+    # Your Project Details (I filled these in from your error message)
+    workspace = "blackjack-p7elo"
+    project_name = "247-blackjack-custom-sd7uj"
+    version_number = 3
+    
+    # Initialize Roboflow
+    rf = Roboflow(api_key=api_key)
+    project = rf.workspace(workspace).project(project_name)
+    version = project.version(version_number)
+    dataset = version.download("yolov8")
+
+    # -------------------------------------------------
 
     # --- 2. LOAD THE PREVIOUS BRAIN ---
+    # Use your v13 brain as the starting point
     path_to_old_brain = 'runs/detect/universal_blackjack_v13/weights/best.pt'
 
-    print(f"Loading brain from: {path_to_old_brain}...")
-    
-    try:
+    if os.path.exists(path_to_old_brain):
+        print(f"✅ Loading previous brain: {path_to_old_brain}")
         model = YOLO(path_to_old_brain)
-    except Exception as e:
-        print(f"Error loading brain: {e}")
-        # Fallback to base model if path is wrong
-        print("Falling back to yolov8n.pt")
+    else:
+        print("⚠️ Old brain not found. Starting fresh with yolov8n.pt")
         model = YOLO('yolov8n.pt')
 
     # --- 3. START TRAINING ---
-    print("Starting Fine-Tuning...")
+    print("Starting Training...")
     
-    # We use 'workers=8' which causes the crash if the 'if __name__' block is missing!
     results = model.train(
-        data=f"{dataset_folder}/data.yaml", 
+        data=f"{dataset.location}/data.yaml", 
         epochs=50, 
         imgsz=640, 
         batch=16, 
-        device=0, 
-        workers=8, 
+        device=0,       # Use your 2070 Super
+        workers=8,      # Fast loading
         name='final_fine_tuned_model'
     )
