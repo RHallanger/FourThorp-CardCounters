@@ -11,15 +11,12 @@ Usage:
     Run the script using Python 3.13. 
     Ensure all dependencies are installed before execution.
     (Most should be installed by default)
-    -pyautogui
     -PIL
     -functools
     -pynput
     -tkinter
     -os
     -pathlib
-    -threading
-    -time
 
 
 NOTICE:
@@ -41,21 +38,62 @@ from pathlib import Path
 
 root = tk.Tk()
 home = Path.home()
+text = tk.Text(root)
 (home/"fourthorpe_cache").mkdir(exist_ok=True,parents=True)
 
 ### Global variables to keep records of player and dealer screenshot locs
 # This will let the user to drag to select the region for both screenshots to be recorded
 playerCoords= {"px1":0, "py1":0, "px2":0, "py2":0}
 dealerCoords= {"dx1":0, "dy1":0, "dx2":0, "dy2":0}
+guiTextList = {'welcome':'Hello, welcome to the FourThorpe - Blackjack Counting Tool...\nPlease click and drag from the top-left of the area of the hand to the bottom-right', 'player':'Please assign the player\'s hand using \'Player Hand Assignment\'.', 'dealer':'Please assign the dealer\'s hand using \'Dealer Hand Assignment', 'screenshot':'You can screenshot the hands using \'New Hand\'.'}
+guiTextDisplay = ''
+for (key, value) in guiTextList.items():
+    guiTextDisplay += value + '\n'
+screenCount = 0
 
 ### THIS PORTION WILL TAKE SCREEN SHOTS
 
 
 ### THIS PORTION WILL HANDLE USER INPUTS FOR RECORDING REGIONS TO TAKE SCREENSHOTS
+# This function will remove a line of text from the GUI instructions
+def guiTextDel(removeKey):
+    global guiTextList
+    global guiTextDisplay
+    del guiTextList[removeKey]
+    text.config(state='normal')
+    text.delete(1.0, tk.END)
+    root.update
+    guiTextDisplay = ''
+    for (key, value) in guiTextList.items():
+        guiTextDisplay += value + '\n'
+    text.insert(tk.END, guiTextDisplay)
+    text.config(state=tk.DISABLED)
+    root.update
+    return
+
+# This function will add a line of text to the GUI instructions
+# More for giving feedback to the user
+def guiTextAdd(addKey, addValue):
+    global guiTextList, guiTextDisplay, screenCount
+    if screenCount > 20:
+        guiTextDel((screenCount - 20))
+    guiTextList[addKey] = addValue
+    text.config(state='normal')
+    text.delete(1.0, tk.END)
+    root.update
+    guiTextDisplay = ''
+    for (key, value) in guiTextList.items():
+        guiTextDisplay += value + '\n'
+    text.insert(tk.END, guiTextDisplay)
+    text.config(state=tk.DISABLED)
+    root.update
+    return
+
 def playerHand():
     print("Please click and drag from the top-left of the area of the player's cards to the bottom-right")
     with mouse.Listener(on_click=playerOnClick) as playerListener:
         playerListener.join()
+        guiTextDel('player')
     return
 
 def playerOnClick(x, y, button, pressed):
@@ -71,9 +109,11 @@ def playerOnClick(x, y, button, pressed):
         return False # These return Falses quit the listening thread
 
 def dealerHand():
+    global guiText, guiTextDealer
     print("Please click and drag from the top-left of the area of the dealer's cards to the bottom-right")
     with mouse.Listener(on_click=dealerOnClick) as dealerListener:
         dealerListener.join()
+        guiTextDel('dealer')
     return
 
 def dealerOnClick(x, y, button, pressed):
@@ -88,33 +128,7 @@ def dealerOnClick(x, y, button, pressed):
         return False
 
 def handSS():
-    global dealerCoords
-    global playerCoords
-
-    # These two loops will verify that it is not an empty dictionary
-    totalValue = 0
-    for index, (coordinate, value) in enumerate(playerCoords.items()):
-        totalValue += value
-        
-        #if coordinate == ""
-
-        if totalValue != 0:
-            break
-        elif index == len(playerCoords) - 1:
-            print("The player's hand was not drawn...")
-            print("Please select 'Player Hand Assignment' on the program to draw the region.")
-            return
-    totalValue = 0
-    for index, (coordinate, value) in enumerate(dealerCoords.items()):
-        totalValue += value
-
-        if totalValue != 0:
-            break
-        elif index == len(dealerCoords) - 1:
-            print("The dealer's hand was not drawn...")
-            print("Please select 'Dealer Hand Assignment' on the program to draw the region.")
-            return
-
+    global dealerCoords, playerCoords, screenCount
     # Clean up old pics
     if (home/"fourthorpe_cache/playerHand.png").exists() or (home/"fourthorpe_cache/deakerHand.png").exists():
         os.unlink(home/"fourthorpe_cache/playerHand.png")
@@ -125,8 +139,12 @@ def handSS():
         dealerHandPNG = ImageGrab.grab(bbox=(dealerCoords['dx1'],dealerCoords['dy1'],dealerCoords['dx2'],dealerCoords['dy2']), all_screens=True)
         playerHandPNG.save(home/'fourthorpe_cache/playerHand.png')
         dealerHandPNG.save(home/'fourthorpe_cache/dealerHand.png')
+        screenCount += 1
+        guiTextAdd(screenCount, f'Hand {screenCount} screenshot taken successfully.')
     except:
-        print('ERROR: The capture was either drawn from the wrong direction or user is not using their primary monitor.\n\nPlease re-draw the hands.')
+        guiTextAdd('player', 'Please re-assign the player\'s hand using \'Player Hand Assignment\'.')
+        guiTextAdd('dealer', 'Please re-assign the dealer\'s hand using \'Dealer Hand Assignment\'.')
+        guiTextAdd('error', 'ERROR: The capture was drawn from the wrong direction.\n\nPlease re-draw the hands.')
         return
     return
 
@@ -143,6 +161,7 @@ def quitApp():
         os.unlink(home/"fourthorpe_cache/dealerHand.png")
         os.rmdir(home/"fourthorpe_cache")
     root.destroy()
+    quit
 
 ### DRAW GUI
 root.title("FourThorpe-Screenshot")
@@ -154,7 +173,9 @@ button3=tk.Button(root,text="Quit", command=quitApp)
 # button4=tk.Button(root,text="Coordinates", command=coordRead)
 button5=tk.Button(root,text="New Hand", command=handSS)
 
-content.grid(column=0, row = 0, columnspan=4)
+text.grid(column=0, row = 0, columnspan=4)
+text.insert(tk.END, guiTextDisplay)
+text.config(state=tk.DISABLED)
 frame.grid(column=0, row=0, columnspan=3, rowspan=2)
 button1.grid(column=0, row=3)
 button2.grid(column=1, row=3)
