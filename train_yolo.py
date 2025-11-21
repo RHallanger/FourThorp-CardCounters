@@ -13,13 +13,13 @@ if __name__ == '__main__':
     
     # Your Project Details (I filled these in from your error message)
     workspace = "blackjack-p7elo"
-    project_name = "247-blackjack-custom-sd7uj"
+    project_name = "blackjack-final-site-a-36w34"
     version_number = 3
     
     # Initialize Roboflow
-    rf = Roboflow(api_key=api_key)
-    project = rf.workspace(workspace).project(project_name)
-    version = project.version(version_number)
+    rf = Roboflow(api_key="YzizvGDTGn3ycUp3BuOR")
+    project = rf.workspace("blackjack-p7elo").project("blackjack-final-site-a-36w34")
+    version = project.version(1)
     dataset = version.download("yolov8")
 
     # -------------------------------------------------

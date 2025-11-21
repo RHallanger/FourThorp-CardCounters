@@ -10,7 +10,7 @@ import StrategyGuide # <-- UNCOMMENTED: Now using the strategy logic
 
 # --- CONFIGURATION ---
 # Confidence: 0.5 is a good starting point for a fine-tuned model.
-CONFIDENCE_THRESHOLD = 0.5  
+CONFIDENCE_THRESHOLD = 0.05
 
 # --- ZONES (Your measured coordinates) ---
 # Player Zone: (x, y, w, h)
@@ -113,8 +113,8 @@ while True:
     player_img_crop = full_frame_bgr[p_y:p_y + p_h, p_x:p_x + p_w]
 
     # 2. Run AI
-    dealer_results = model.predict(dealer_img_crop, conf=CONFIDENCE_THRESHOLD, verbose=False)
-    player_results = model.predict(player_img_crop, conf=CONFIDENCE_THRESHOLD, verbose=False)
+    dealer_results = model.predict(dealer_img_crop, conf=CONFIDENCE_THRESHOLD, iou=0.5, imgsz=640, verbose=True)
+    player_results = model.predict(player_img_crop, conf=CONFIDENCE_THRESHOLD, iou=0.5, imgsz=640, verbose=True)
     
     # 3. Get Card Names
     dealer_hand = get_card_ranks(dealer_results)
