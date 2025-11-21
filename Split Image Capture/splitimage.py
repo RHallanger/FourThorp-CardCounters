@@ -12,7 +12,6 @@ Usage:
     Ensure all dependencies are installed before execution.
     (Most should be installed by default)
     -PIL
-    -functools
     -pynput
     -tkinter
     -os
@@ -26,12 +25,8 @@ This is a known issue that has not been resolved.
 ===========================================================
 """
 
-#import pyautogui
 from pynput import mouse
-# from threading import Thread
-# from time import sleep
 from PIL import ImageGrab
-from functools import partial
 import tkinter as tk
 import os
 from pathlib import Path
@@ -90,10 +85,12 @@ def guiTextAdd(addKey, addValue):
     return
 
 def playerHand():
+    global guiTextList
     print("Please click and drag from the top-left of the area of the player's cards to the bottom-right")
     with mouse.Listener(on_click=playerOnClick) as playerListener:
         playerListener.join()
-        guiTextDel('player')
+        if "player" in guiTextList:
+            guiTextDel('player')
     return
 
 def playerOnClick(x, y, button, pressed):
@@ -109,11 +106,12 @@ def playerOnClick(x, y, button, pressed):
         return False # These return Falses quit the listening thread
 
 def dealerHand():
-    global guiText, guiTextDealer
+    global guiTextList
     print("Please click and drag from the top-left of the area of the dealer's cards to the bottom-right")
     with mouse.Listener(on_click=dealerOnClick) as dealerListener:
         dealerListener.join()
-        guiTextDel('dealer')
+        if 'dealer' in guiTextList:
+            guiTextDel('dealer')
     return
 
 def dealerOnClick(x, y, button, pressed):
@@ -130,8 +128,9 @@ def dealerOnClick(x, y, button, pressed):
 def handSS():
     global dealerCoords, playerCoords, screenCount
     # Clean up old pics
-    if (home/"fourthorpe_cache/playerHand.png").exists() or (home/"fourthorpe_cache/deakerHand.png").exists():
+    if (home/"fourthorpe_cache/playerHand.png").exists():
         os.unlink(home/"fourthorpe_cache/playerHand.png")
+    if (home/"fourthorpe_cache/dealerHand.png").exists():
         os.unlink(home/"fourthorpe_cache/dealerHand.png")
     # Screenshot new pics
     try:
@@ -148,15 +147,9 @@ def handSS():
         return
     return
 
-def coordRead():
-    global dealerCoords
-    global playerCoords
-    print(f'Dealer[ X: {dealerCoords["dx1"]}, Y: {dealerCoords["dy1"]}, X2: {dealerCoords["dx2"]}, Y2: {dealerCoords["dy2"]} ]')
-    print(f'Player[ X: {playerCoords["px1"]}, Y: {playerCoords["py1"]}, X2: {playerCoords["px2"]}, Y2: {playerCoords["py2"]} ]')
-
 def quitApp():
     # When they close the program, it will automatically clean up our files.
-    if (home/"fourthorpe_cache/playerHand.png").exists() or (home/"fourthorpe_cache/deakerHand.png").exists():
+    if (home/"fourthorpe_cache/playerHand.png").exists() or (home/"fourthorpe_cache/dealerHand.png").exists():
         os.unlink(home/"fourthorpe_cache/playerHand.png")
         os.unlink(home/"fourthorpe_cache/dealerHand.png")
         os.rmdir(home/"fourthorpe_cache")
@@ -170,7 +163,6 @@ frame = tk.Frame(content, borderwidth=5, relief="ridge", width=384, height=100)
 button1=tk.Button(root,text="Player Hand Assignment", command=playerHand)
 button2=tk.Button(root,text="Dealer Hand Assignment", command=dealerHand)
 button3=tk.Button(root,text="Quit", command=quitApp)
-# button4=tk.Button(root,text="Coordinates", command=coordRead)
 button5=tk.Button(root,text="New Hand", command=handSS)
 
 text.grid(column=0, row = 0, columnspan=4)
