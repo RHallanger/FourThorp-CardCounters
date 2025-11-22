@@ -2,12 +2,37 @@
 # This file is the "Book." It holds all the Blackjack
 # Basic Strategy rules and the Hi-Lo deviations.
 
-# Hard values for calculating hand totals
+# Hard values for calculating hand totals (Now includes full word mappings)
 CARD_VALUES = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
-    '10': 10, 'J': 10, 'Q': 10, 'K': 10, 'A': 11
+    '10': 10, 'J': 10, 'Q': 10, 'K': 10, 'A': 11,
+    'jack': 10, 'queen': 10, 'king': 10, 'ace': 11
 }
 
+def calculate_hand_total(cards):
+    """Calculates the Blackjack value of a list of cards, handling Aces (1 or 11)."""
+    total = 0
+    ace_count = 0
+    
+    # We use the global CARD_VALUES defined above
+    card_values = CARD_VALUES
+    
+    for card in cards:
+        # Normalize the card string for safety (e.g., ' K' -> 'K')
+        clean_card = str(card).upper().strip()
+        
+        # Ensure the card is a valid rank before adding its value
+        if clean_card in card_values: 
+            total += card_values[clean_card]
+            if clean_card == 'A' or clean_card == 'ACE':
+                ace_count += 1
+            
+    # Logic to change Ace from 11 to 1 if the hand busts (Soft Ace handling)
+    while total > 21 and ace_count > 0:
+        total -= 10
+        ace_count -= 1
+        
+    return total
 def get_player_action(player_hand_cards, dealer_hand_cards, true_count):
     """
     Decides the best action (Hit, Stand, Double) based on the 
