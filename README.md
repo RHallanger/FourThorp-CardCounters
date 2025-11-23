@@ -3,7 +3,15 @@
 <h3>By Team FourThorp </h3><img src="https://github.com/RHallanger/FourThorp-CardCounters/blob/main/4ThorpLogo2.png" alt="Team FourThorp" width="50"/>
 
 ## Description
-The goal of this project is to automatically capture the cards the player has in hand on an online Blackjack game and provide statistics of odds to win.
+The goal of this project is to automatically provide statistics of odds to win based on user inputted cards.
+
+## Featured Programs
+ - Split Image
+   - Allows a user to screenshot selected portions of the screen on multiple monitors.
+ - Screen Capture - MF
+   - Performs a full-screen capture on an automatic timer.
+ - Hi-Lo
+   - Main program to 
 
 ## Members of Team FourThorp
 **Ryan Vrbetta - Developer**
