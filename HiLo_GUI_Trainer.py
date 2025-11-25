@@ -4,198 +4,171 @@ Program Name: HiLo_GUI_Trainer.py
 Author: Ryan Vrbeta
 Date: 2025-11-22
 Description:
-    This program brings up a tkinter UI that asks for end-user input. The goal of this program is
-    to count cards by entering numbers in a shoe and by using the interface you can also enter in the dealer's UP card
-    and your own hand to have the program determine whether you should hit or stay.
-    
-Usage:
-    Run the script using Python 3.x. Ensure all dependencies
-    are installed before execution.
-
+    A Button-Driven Blackjack Strategy & Counting Trainer.
+    - Quick Select buttons for cards.
+    - Toggle between "Count Mode", "Player Hand", and "Dealer Hand".
+    - Instant RC/TC updates.
 ===========================================================
 """
 import tkinter as tk
-from tkinter import messagebox # For user error messages
-from tkinter import simpledialog
+from tkinter import messagebox
 import os
-from pathlib import Path
 from functools import partial
 
-# --- IMPORT ESSENTIAL LOGIC ---
-# These two files must be present in the same directory!
+# --- IMPORT LOGIC ---
+# Ensure HiLoCounter.py and StrategyGuide.py are in the same folder!
 from HiLoCounter import HiLoCounter 
 import StrategyGuide 
 
-# --- 1. GLOBAL VARIABLES & CONFIGURATION ---
+# --- 1. SETUP & GLOBALS ---
+HILO_BRAIN = HiLoCounter(decks=6)
+VALID_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
-# Initialize Brains (Loaded once at startup)
-HILO_BRAIN = HiLoCounter(decks=6) # Create the HiLoCounter object immediately
-VALID_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+# State Variables
+current_mode = "COUNT ONLY" # Modes: COUNT ONLY, PLAYER HAND, DEALER UP-CARD
+player_hand = []
+dealer_hand = []
 
-# Tkinter Setup
-root = tk.Tk() 
-root.title("FourThorpe Blackjack Trainer")
+# Tkinter Window Setup
+root = tk.Tk()
+root.title("4Thorp Trainer")
+root.geometry("320x500") # Narrow width as requested
+root.resizable(False, False)
 
-# StringVars for dynamic label updates
-player_hand_display = tk.StringVar(root, value="Player Hand: [] (Total: 0)")
-dealer_hand_display = tk.StringVar(root, value="Dealer Hand: [] (Total: 0)")
-stats_display = tk.StringVar(root, value="RC: 0 | TC: 0.00 | ACTION: READY")
-info_text_display = tk.StringVar(root, value="Enter a card rank (2-10, J, Q, K, A) and click 'Count Card'.")
-
-# Frame and Text Area setup
-content = tk.Frame(root) 
-card_input_entry = tk.Entry(content, width=10) # The new non-CLI input box
-
-
-# --- 2. CORE LOGIC FUNCTIONS ---
-
-def normalize_input(card_str):
-    """Converts various user inputs (1, 11, ace) into standard rank strings ('A', 'J')."""
-    card = card_str.strip().upper()
-    try:
-        num = int(card)
-        if num == 1: return 'A'
-        if 2 <= num <= 10: return str(num)
-        if num == 11: return 'J'
-        if num == 12: return 'Q'
-        if num == 13: return 'K'
-    except ValueError:
-        pass
-    
-    if card in VALID_RANKS:
-        return card
-
-    return None
+# UI Variables
+stats_text = tk.StringVar(value="RC: 0  |  TC: 0.00")
+action_text = tk.StringVar(value="--")
+mode_text = tk.StringVar(value="MODE: COUNT ONLY")
+player_text = tk.StringVar(value="Player: []")
+dealer_text = tk.StringVar(value="Dealer: []")
 
 
-def update_display(action, current_hand=None, d_card=None):
-    """Updates all Tkinter labels after a count or decision is made."""
-    
+# --- 2. LOGIC FUNCTIONS ---
+
+def update_gui():
+    """Refreshes all labels based on current state."""
+    # Update Counts
     rc = HILO_BRAIN.running_count
     tc = HILO_BRAIN.true_count()
+    stats_text.set(f"RC: {rc}  |  TC: {tc}")
     
-    stats_display.set(f"RC: {rc} | TC: {tc} | ACTION: {action}")
+    # Update Hands
+    p_total = StrategyGuide.calculate_hand_total(player_hand)
+    d_total = StrategyGuide.calculate_hand_total(dealer_hand)
     
-    if current_hand is not None:
-        p_total = StrategyGuide.calculate_hand_total(current_hand)
-        d_total = StrategyGuide.calculate_hand_total(d_card) if d_card else 0
-        
-        player_hand_display.set(f"Player Hand: {', '.join(current_hand)} (Total: {p_total})")
-        dealer_hand_display.set(f"Dealer Hand: {', '.join(d_card)} (Total: {d_total})")
+    player_text.set(f"Player: {player_hand} ({p_total})")
+    dealer_text.set(f"Dealer: {dealer_hand} ({d_total})")
     
-    # Clears the input box after action
-    card_input_entry.delete(0, tk.END)
-
-
-# --- 3. COMMAND FUNCTIONS (Button Logic) ---
-
-def handle_card_count():
-    """Reads input from the entry box and sends it to the HiLo counter."""
-    card_input = card_input_entry.get()
-    card_rank = normalize_input(card_input)
+    # Update Mode Button Text
+    mode_text.set(f"MODE: {current_mode}")
     
-    if card_rank and card_rank in VALID_RANKS:
-        HILO_BRAIN.count_card(card_rank)
-        info_text_display.set(f"Counted: {card_rank}. RC is now {HILO_BRAIN.running_count}")
-        update_display("COUNTING...")
+    # Auto-Run Strategy if hands are ready
+    if len(player_hand) >= 2 and len(dealer_hand) >= 1:
+        get_strategy()
     else:
-        messagebox.showerror("Invalid Card", f"'{card_input}' is not a valid rank. Use A, 2-10, J, Q, K.")
+        action_text.set("--")
+        lbl_action.config(fg="black")
+
+def card_button_clicked(rank):
+    """Called when a Card Button (2-A) is pressed."""
+    global player_hand, dealer_hand
+    
+    # 1. Always count the card (Hi-Lo)
+    HILO_BRAIN.count_card(rank)
+    
+    # 2. Add to specific hand if in that mode
+    if current_mode == "PLAYER HAND":
+        player_hand.append(rank)
+    elif current_mode == "DEALER UP-CARD":
+        # Dealer only needs 1 up-card for strategy
+        dealer_hand = [rank] 
         
-    card_input_entry.delete(0, tk.END)
+    update_gui()
 
-# --- IN HiLo_GUI_Trainer.py ---
+def toggle_mode():
+    """Cycles: Count -> Player -> Dealer -> Count"""
+    global current_mode
+    if current_mode == "COUNT ONLY":
+        current_mode = "PLAYER HAND"
+        btn_mode.config(bg="#ADD8E6") # Light Blue
+    elif current_mode == "PLAYER HAND":
+        current_mode = "DEALER UP-CARD"
+        btn_mode.config(bg="#FFCCCB") # Light Red
+    else:
+        current_mode = "COUNT ONLY"
+        btn_mode.config(bg="#E0E0E0") # Gray
+    update_gui()
 
-def handle_decision():
-    """Gets player/dealer hands and provides the strategy recommendation using pop-ups."""
-    
-    # 1. Get Dealer Up-Card via Tkinter Pop-up
-    dealer_input = tk.simpledialog.askstring("Dealer's Up Card", "Enter the Dealer's UP card (e.g., 7 or A):")
-    
-    # FIX: Check for the 'Cancel' button (which returns None)
-    if dealer_input is None:
-        return
-
-    dealer_rank = normalize_input(dealer_input)
-    
-    if not dealer_rank:
-        messagebox.showerror("Error", "Dealer card not valid. Please try again.")
-        return
-
-    # 2. Get Player Hand via Tkinter Pop-up
-    player_hand_input = tk.simpledialog.askstring("Player Hand", "Enter your hand, separated by commas (e.g., K, 5, A):")
-    
-    # FIX: Check for the 'Cancel' button on the player hand pop-up
-    if player_hand_input is None:
-        return
-
-    player_hand_ranks = [normalize_input(c) for c in player_hand_input.split(',') if normalize_input(c) in VALID_RANKS]
-
-    if not player_hand_ranks:
-        messagebox.showerror("Error", "Could not parse hand. Please use correct rank names.")
-        return
-
-    # 3. Get Strategy Decision
+def get_strategy():
+    """Calculates Hit/Stand based on hands and True Count."""
     try:
-        # Pass the current True Count and the player/dealer hands to the Strategy Guide
-        action = StrategyGuide.get_player_action(player_hand_ranks, [dealer_rank], HILO_BRAIN.true_count())
-        player_total = StrategyGuide.calculate_hand_total(player_hand_ranks)
+        action = StrategyGuide.get_player_action(player_hand, dealer_hand, HILO_BRAIN.true_count())
+        action_text.set(action)
         
-        # Update displays
-        update_display(action, player_hand_ranks, [dealer_rank])
-        info_text_display.set(f"Decision for {player_hand_ranks} vs {dealer_rank}: {action}")
-
+        # Color Coding
+        if "HIT" in action: lbl_action.config(fg="green")
+        elif "STAND" in action: lbl_action.config(fg="red")
+        elif "DOUBLE" in action: lbl_action.config(fg="blue")
+        else: lbl_action.config(fg="black")
     except Exception as e:
-        messagebox.showerror("CRITICAL ERROR", f"Failed to get strategy. Check StrategyGuide.py. Error: {e}")
+        print(f"Strategy Error: {e}")
 
+def reset_hand():
+    """Clears hands for next round, KEEPS the count."""
+    global player_hand, dealer_hand
+    player_hand = []
+    dealer_hand = []
+    update_gui()
 
-
-    # 3. Get Strategy Decision
-    action = StrategyGuide.get_player_action(player_hand_ranks, [dealer_rank], HILO_BRAIN.true_count())
-    
-    # Update displays
-    update_display(action, player_hand_ranks, [dealer_rank])
-    info_text_display.set(f"Decision for {player_hand_ranks} vs {dealer_rank}: {action}")
-    card_input_entry.delete(0, tk.END)
-
-
-def reset_shoe_cmd():
-    """Resets the entire shoe."""
+def new_shoe():
+    """Resets EVERYTHING (Count goes to 0)."""
     HILO_BRAIN.reset_shoe()
-    update_display("NEW SHOE", current_hand=[], d_card=[])
-    info_text_display.set("👟 SHOE RESET. RC/TC is zero.")
-    player_hand_display.set("Player Hand: [] (Total: 0)")
-    dealer_hand_display.set("Dealer Hand: [] (Total: 0)")
+    reset_hand()
 
 
-# --- 4. DRAW TKINTER GUI ---
+# --- 3. GUI LAYOUT ---
 
-root.geometry("600x300")
-root.grid_columnconfigure(0, weight=1)
-root.grid_rowconfigure(0, weight=1)
+# Stats Header
+frame_header = tk.Frame(root, pady=10)
+frame_header.pack()
+tk.Label(frame_header, textvariable=stats_text, font=("Arial", 14, "bold")).pack()
+lbl_action = tk.Label(frame_header, textvariable=action_text, font=("Arial", 18, "bold"))
+lbl_action.pack()
 
-content.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
-content.grid_columnconfigure(0, weight=1)
-content.grid_columnconfigure(1, weight=1)
-content.grid_columnconfigure(2, weight=1)
+# Hands Display
+frame_hands = tk.Frame(root)
+frame_hands.pack()
+tk.Label(frame_hands, textvariable=dealer_text, font=("Consolas", 10)).pack()
+tk.Label(frame_hands, textvariable=player_text, font=("Consolas", 10)).pack()
 
-# Hand Display Labels (Top Right)
-tk.Label(content, textvariable=stats_display, font=("Arial", 16, "bold"), fg='#B3C6E7').grid(column=2, row=0, sticky=tk.W, padx=10, pady=(15, 0))
-tk.Label(content, textvariable=player_hand_display, font=("Arial", 12)).grid(column=2, row=1, sticky=tk.W, padx=10)
-tk.Label(content, textvariable=dealer_hand_display, font=("Arial", 12)).grid(column=2, row=2, sticky=tk.W, padx=10)
+# Mode Switcher
+tk.Label(root, text=" ").pack() # Spacer
+btn_mode = tk.Button(root, textvariable=mode_text, command=toggle_mode, height=2, bg="#E0E0E0")
+btn_mode.pack(fill=tk.X, padx=20)
 
-# Input Section (Center Left)
-tk.Label(content, text="Card Input / Decision Card:", font=("Arial", 10)).grid(column=0, row=0, sticky=tk.W, padx=10, pady=(15, 5))
-card_input_entry.grid(column=0, row=1, sticky=(tk.W, tk.E), padx=10, pady=5)
-tk.Label(content, textvariable=info_text_display, font=("Arial", 10), fg='gray').grid(column=0, row=2, columnspan=2, sticky=tk.W, padx=10)
+# Card Grid (Buttons)
+frame_grid = tk.Frame(root, pady=10)
+frame_grid.pack()
 
+r = 0
+c = 0
+for rank in VALID_RANKS:
+    btn = tk.Button(frame_grid, text=rank, width=5, height=2, 
+                    command=partial(card_button_clicked, rank))
+    btn.grid(row=r, column=c, padx=2, pady=2)
+    c += 1
+    if c > 3: # 4 columns
+        c = 0
+        r += 1
 
-# Control Buttons (Bottom Left/Center)
-tk.Button(content, text="COUNT CARD (RC)", command=handle_card_count, bg='#66CC66').grid(column=0, row=3, padx=10, pady=10, sticky=(tk.W, tk.E))
-tk.Button(content, text="GET STRATEGY", command=handle_decision, bg='#B3C6E7').grid(column=1, row=3, padx=10, pady=10, sticky=(tk.W, tk.E))
-tk.Button(content, text="RESET SHOE", command=reset_shoe_cmd, bg='#CC6600').grid(column=0, row=4, padx=10, pady=10, sticky=(tk.W, tk.E))
-tk.Button(content, text="QUIT", command=root.destroy, bg='#8B0000').grid(column=1, row=4, padx=10, pady=10, sticky=(tk.W, tk.E))
+# Footer Controls
+frame_footer = tk.Frame(root, pady=20)
+frame_footer.pack(side=tk.BOTTOM, fill=tk.X)
 
+tk.Button(frame_footer, text="Next Hand", command=reset_hand, bg="#FFD700").pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+tk.Button(frame_footer, text="New Shoe", command=new_shoe, bg="#FF4500").pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=5)
 
-# Start the GUI
+# Start
+update_gui()
 if __name__ == '__main__':
     root.mainloop()
