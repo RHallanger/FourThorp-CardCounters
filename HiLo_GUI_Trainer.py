@@ -1,23 +1,24 @@
 ﻿"""
 ===========================================================
 Program Name: HiLo_GUI_Trainer.py
+Author: Ryan Vrbeta
+Date: 2025-11-26
 Description:
     A Button-Driven Blackjack Strategy & Counting Trainer.
     
     Architecture:
-    - Uses an Event-Driven GUI (Tkinter) to handle user inputs.
-    - Uses an Event-Driven GUI (Tkinter) to handle user inputs.
-    - Implements a 'State Machine' to toggle between Counting, Player Hand, and Dealer Hand modes.
-    - Decouples Logic: Uses 'HiLoCounter' for math and 'StrategyGuide' for rules.
+    - GUI Framework: Tkinter (Python's standard GUI library).
+    - Design Pattern: Event-Driven State Machine.
+    - Logic Separation: Imports math from 'HiLoCounter' and rules from 'StrategyGuide'.
 ===========================================================
 """
 import tkinter as tk
 from tkinter import messagebox, Toplevel
 import os
-from functools import partial
+from functools import partial # Used to pass arguments to button commands
 
 # --- IMPORT LOGIC MODULES ---
-# We import these classes to keep the math separate from the GUI code (MVC Pattern).
+# We import these classes to keep the math separate from the GUI code.
 from HiLoCounter import HiLoCounter 
 import StrategyGuide 
 
@@ -31,12 +32,12 @@ VALID_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
 # --- APPLICATION STATE VARIABLES ---
 # These variables track "Where we are" in the game flow.
-current_mode = "COUNT ONLY" # The active input mode
+current_mode = "COUNT ONLY" # The active input mode (State Machine)
 is_removing = False         # Boolean flag for Error Correction mode
 player_hand = []            # List to store Player's current cards
 dealer_hand = []            # List to store Dealer's current cards
 
-# Dictionary to track frequency stats (How many Kings have we seen?)
+# Dictionary to track frequency stats (e.g. How many Kings have we seen?)
 seen_card_counts = {rank: 0 for rank in VALID_RANKS}
 
 # Tkinter Window Setup
@@ -72,6 +73,7 @@ def update_gui():
     p_total = StrategyGuide.calculate_hand_total(player_hand)
     d_total = StrategyGuide.calculate_hand_total(dealer_hand)
     
+    # Update the StringVars (which automatically updates the GUI labels)
     player_text.set(f"Player: {player_hand} ({p_total})")
     dealer_text.set(f"Dealer: {dealer_hand} ({d_total})")
     
@@ -118,11 +120,15 @@ def card_button_clicked(rank):
     process_card_logic(rank, removing=is_removing)
     
     # 2. Update the Hand Lists (Only if we are ADDING cards)
+    # We do not modify hands if we are in 'Correction' mode
     if not is_removing:
         if current_mode == "PLAYER HAND":
             player_hand.append(rank) # Append allows multiple cards (Hit/Split)
         elif current_mode == "DEALER UP-CARD":
-            dealer_hand = [rank]     # Overwrite ensures only 1 dealer up-card is tracked
+            if len(dealer_hand) == 0:
+                 dealer_hand.append(rank)
+            else:
+                 dealer_hand[0] = rank # Overwrite ensures only 1 dealer up-card
         
     update_gui()
 
@@ -156,6 +162,7 @@ def set_mode(new_mode):
     mode_text.set(f"MODE: {current_mode}")
     
     # Visual Toggle Logic: Only the active button looks 'pressed' (Sunken)
+    # This gives the user immediate feedback on which state is active.
     btn_count.config(relief=tk.SUNKEN if new_mode == "COUNT ONLY" else tk.RAISED, 
                      bg="#ADD8E6" if new_mode == "COUNT ONLY" else "#E0E0E0")
     btn_player.config(relief=tk.SUNKEN if new_mode == "PLAYER HAND" else tk.RAISED, 
@@ -255,6 +262,7 @@ frame_grid.pack()
 r = 0; c = 0
 for rank in VALID_RANKS:
     # Dynamically create buttons for every rank in the list
+    # 'partial' freezes the 'rank' argument into the button's command function
     btn = tk.Button(frame_grid, text=rank, width=5, height=2, command=partial(card_button_clicked, rank))
     btn.grid(row=r, column=c, padx=2, pady=2)
     c += 1
