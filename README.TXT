@@ -41,7 +41,11 @@ Robert Hallanger - Project Manager
 - Suggested improvements and future features for the tool.
 - Created and maintained project documentation and logo.
 
-Ryan Vrbetta - Developer
+Ryan Vrbeta - Developer
+- Architected and built the final production GUI using the Tkinter framework.
+- Developed the core logic modules: `HiLoCounter.py` (Math/State) and `StrategyGuide.py` (Rules engine).
+- Implemented the Event-Driven State Machine to handle game flow (Counting vs. Hand Assignment).
+- Integrated the Strategy Engine to provide real-time decision feedback based on user input.
 
 Matthew Fuentes - Developer
 
