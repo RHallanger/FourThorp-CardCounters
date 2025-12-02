@@ -12,7 +12,7 @@ The goal of this project is to automatically provide statistics of odds to win b
    - Performs a full-screen capture on an automatic timer.
 
 ## Members of Team FourThorp
-**Ryan Vrbetta - Developer**
+**Ryan Vrbeta - Developer**
 
 **Matthew Fuentes - Developer**
 
