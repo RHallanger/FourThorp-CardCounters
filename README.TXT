@@ -50,5 +50,8 @@ Ryan Vrbeta - Developer
 Matthew Fuentes - Developer
 
 Kelton Jasper - Tester
+  - Tested the code for any bugs.
+  - Checked for user friendliness in the GUI.
+  - provided imput for any changes that needed to be made.
 
 ===========================================================
