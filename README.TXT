@@ -20,6 +20,7 @@ Users will be given a GUI interface.
 
 The user is expected to select the mode (add/remove), select the hand that contains the cards wished to be added, and then the card rank itself.
 The program will then update the running and true counts accordingly and provide a suggestion for the next best action.
+The user can select the number of decks in the shoe at the bottom in a drop-down list.
 The user can reset their hand, but maintain the seen cards of the shoe by selecting "Next Hand".
 The user can also reset the entire shoe by selecting "New Shoe".
 
@@ -31,5 +32,19 @@ Future Improvements:
 - Implement a more advanced strategy suggestion system based on card counting or additional strategies.
 - Implement an image analyzer to automatically detect cards from photographs of each hand to automate the card input process.
 - Implement statistic tools for additional games.
+
+Members:
+
+Robert Hallanger - Project Manager
+- Lead the project, coordinated team efforts, and ensured timely delivery of milestones.
+- Oversaw the overall design and functionality of the application.
+- Suggested improvements and future features for the tool.
+- Created and maintained project documentation and logo.
+
+Ryan Vrbetta - Developer
+
+Matthew Fuentes - Developer
+
+Kelton Jasper - Tester
 
 ===========================================================
