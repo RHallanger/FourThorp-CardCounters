@@ -48,6 +48,9 @@ Ryan Vrbeta - Developer
 - Integrated the Strategy Engine to provide real-time decision feedback based on user input.
 
 Matthew Fuentes - Developer
+- Built the Iamge Capture program (no longer used)
+- Checked for flow of code and readability within program
+- Provided feedback and input on any changes that needed to be made
 
 Kelton Jasper - Tester
   - Tested the code for any bugs.
